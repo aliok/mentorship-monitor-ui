@@ -1,3 +1,11 @@
 $gray-400: #ccc;
 $gray-700: #495057;
 $dark: #403f4c;
+
+.weekButton{
+  width: 100%;
+}
+
+.weekButton.selected{
+    background-color: lightgreen;
+}

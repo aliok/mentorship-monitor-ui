@@ -4,6 +4,7 @@
     "@types/jquery": "^3.5.25",
     "@webpack-cli/generators": "^3.0.7",
     "css-loader": "^6.8.1",
+    "date-fns": "^3.6.0",
     "html-webpack-plugin": "^5.5.3",
     "prettier": "^3.0.3",
     "sass": "^1.69.5",
@@ -25,6 +26,5 @@
     "build:prod": "webpack --mode=production --node-env=production",
     "watch": "webpack --watch",
     "serve": "webpack serve"
-  },
-  "dependencies": {}
+  }
 }

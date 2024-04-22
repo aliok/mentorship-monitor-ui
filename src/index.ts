@@ -338,9 +338,9 @@ async function main() {
                             <img src="https://github.com/${row.mentee.username}.png?size=40" class="rounded-circle" style="width: 40px;">
                         </div>
                         <div class="col-8">
-                            <a href="https://github.com/aliok" target="_blank">@${row.mentee.username}</a>
+                            <a href="https://github.com/${row.mentee.username}" target="_blank">@${row.mentee.username}</a>
                             <br>
-                            <a href="https://github.com/aliok" target="_blank">${row.mentee.name}</a>
+                            <a href="https://github.com/${row.mentee.username}" target="_blank">${row.mentee.name}</a>
                         </div>
                     </div>
                 </div>
@@ -381,6 +381,9 @@ async function main() {
                     ${row.pullRequestReviews.map((pr:{repository:string, number:number, url:string}) => `<a href="${pr.url}" target="_blank">${pr.repository}#${pr.number}</a>`).join(", ")}
                 </div>
             </td>`;
+
+            html += `<td><a href="https://github.com/${row.mentee.username}?tab=overview&from=${startDate}&to=${endDate}" target="_blank">Details</a></td>`;
+
 
             html = `<tr>${html}</tr>`;
 

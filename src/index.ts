@@ -92,8 +92,6 @@ type MenteeActivitySummary = {
         };
     };
     term: string;
-    mentors: string[];
-    organizations: string[];
     weekOf: string;
 };
 
@@ -265,7 +263,7 @@ async function main() {
 
         // if projectOrgActivitiesOnlyInput is checked, filter out the ones that are not in the project orgs
         if (jQuery("#projectOrgActivitiesOnlyInput").is(":checked")) {
-            removeNonProjectOrgActivities(cohortActivitySummaries);
+            removeNonProjectOrgActivities(program, cohortActivitySummaries);
         }
 
         const menteeSummaryRows = buildMenteeSummaryRows(cohortActivitySummaries);
@@ -287,12 +285,20 @@ async function main() {
         });
     }
 
-    function removeNonProjectOrgActivities(cohortActivitySummaries:MenteeActivitySummary[]) {
+    function removeNonProjectOrgActivities(program:Program, cohortActivitySummaries:MenteeActivitySummary[]) {
+        // create a map of mentee to organizations
+        const menteeToOrgs:{[mentee:string]:string[]} = {};
+        for(let mentee of program.cohort) {
+            menteeToOrgs[mentee.username.toLowerCase()] = mentee.organizations;
+        }
+
         for(let summary of cohortActivitySummaries) {
+            let menteeUsername = summary.mentee.login.toLowerCase()
+            const menteeOrgArr = menteeToOrgs[menteeUsername];
 
             let filteredCommits:CommitContribByRepo[] = [];
             for(let contrib of summary.mentee.contributionsCollection.commitContributionsByRepository) {
-                if(summary.organizations.indexOf(contrib.repository.owner.login) !== -1) {
+                if(menteeOrgArr.indexOf(contrib.repository.owner.login) !== -1) {
                     filteredCommits.push(contrib);
                 }
             }
@@ -300,7 +306,7 @@ async function main() {
 
             let filteredIssues:IssueContribByRepo[] = [];
             for(let contrib of summary.mentee.contributionsCollection.issueContributionsByRepository) {
-                if(summary.organizations.indexOf(contrib.repository.owner.login) !== -1) {
+                if(menteeOrgArr.indexOf(contrib.repository.owner.login) !== -1) {
                     filteredIssues.push(contrib);
                 }
             }
@@ -308,7 +314,7 @@ async function main() {
 
             let filteredPullRequests:PullRequestContribByRepo[] = [];
             for(let contrib of summary.mentee.contributionsCollection.pullRequestContributionsByRepository) {
-                if(summary.organizations.indexOf(contrib.repository.owner.login) !== -1) {
+                if(menteeOrgArr.indexOf(contrib.repository.owner.login) !== -1) {
                     filteredPullRequests.push(contrib);
                 }
             }
@@ -316,7 +322,7 @@ async function main() {
 
             let filteredPullRequestReviews:PullRequestReviewContribByRepo[] = [];
             for(let contrib of summary.mentee.contributionsCollection.pullRequestReviewContributionsByRepository) {
-                if(summary.organizations.indexOf(contrib.repository.owner.login) !== -1) {
+                if(menteeOrgArr.indexOf(contrib.repository.owner.login) !== -1) {
                     filteredPullRequestReviews.push(contrib);
                 }
             }

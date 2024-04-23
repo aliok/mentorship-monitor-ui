@@ -193,25 +193,35 @@ async function main() {
         selectProgram(selectedProgram);
     });
 
-    function buildMenteeSummaryRows(cohortActivitySummaries:MenteeActivitySummary[]) {
+    function buildMenteeSummaryRows(program:Program, cohortActivitySummaries:MenteeActivitySummary[]) {
+        // TODO: any sorting of rows?
         const menteeSummaryRows:{ [mentee:string]:MenteeSummaryRow } = {};
+        for (let mentee of program.cohort) {
+            menteeSummaryRows[mentee.username] = {
+                mentee: {
+                    username: mentee.username,
+                    name: "",
+                },
+                status: false,
+                pullRequests: [],
+                issues: [],
+                commits: {},
+                pullRequestReviews: [],
+            };
+        }
+
+
         for (let summary of cohortActivitySummaries) {
             let username = summary.mentee.login;
-            if (!menteeSummaryRows[username]) {
-                menteeSummaryRows[username] = {
-                    mentee: {
-                        username: summary.mentee.login,
-                        name: summary.mentee.name
-                    },
-                    status: false,
-                    pullRequests: [],
-                    issues: [],
-                    commits: {},
-                    pullRequestReviews: [],
-                };
+            const row = menteeSummaryRows[username];
+
+            if (!row) {
+                console.log("Mentee not found in the cohort, why do we have activities for this user?: ", username);
+                continue;
             }
 
-            const row = menteeSummaryRows[username];
+            // we don't have this in advance, so we need to fill it in
+            row.mentee.name = summary.mentee.name;
 
             for (let contrib of summary.mentee.contributionsCollection.pullRequestContributionsByRepository) {
                 for (let node of contrib.contributions.nodes) {
@@ -266,7 +276,7 @@ async function main() {
             removeNonProjectOrgActivities(program, cohortActivitySummaries);
         }
 
-        const menteeSummaryRows = buildMenteeSummaryRows(cohortActivitySummaries);
+        const menteeSummaryRows = buildMenteeSummaryRows(program, cohortActivitySummaries);
 
         const startDate = selectedWeeks[0];
         const endDate = format(endOfWeek(parse(selectedWeeks[selectedWeeks.length - 1], "yyyy-MM-dd", new Date()), {weekStartsOn:1}), "yyyy-MM-dd");
@@ -280,6 +290,9 @@ async function main() {
     function filterBySelectedWeeks(cohortActivitySummaries:MenteeActivitySummary[], selectedWeeks:string[]) {
         return cohortActivitySummaries.filter((summary:MenteeActivitySummary) => {
             return selectedWeeks.some((week:string) => {
+                if(!summary.mentee){
+                    return false;
+                }
                 return summary.mentee.contributionsCollection.startedAt <= week && week <= summary.mentee.contributionsCollection.endedAt;
             });
         });

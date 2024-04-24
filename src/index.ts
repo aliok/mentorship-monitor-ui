@@ -1,6 +1,7 @@
 import "./style.scss";
 import {endOfWeek, format, parse} from "date-fns";
 import {WeeksInput} from "./weeksInput"
+import bootstrap from "bootstrap";
 
 type Mentee = {
     username: string;
@@ -164,6 +165,14 @@ function renderProgramInput(programs:{ [name:string]:Program }, selectedProgram:
 }
 
 async function main() {
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl, {
+            html: true,
+            trigger: "click hover focus",
+        });
+    });
+
     // fetch programs list
     // fetch the files for each program
     // make an in-progress program selected
@@ -197,9 +206,10 @@ async function main() {
         // TODO: any sorting of rows?
         const menteeSummaryRows:{ [mentee:string]:MenteeSummaryRow } = {};
         for (let mentee of program.cohort) {
-            menteeSummaryRows[mentee.username] = {
+            let username = mentee.username.toLowerCase();
+            menteeSummaryRows[username] = {
                 mentee: {
-                    username: mentee.username,
+                    username: username,
                     name: "",
                 },
                 status: false,
@@ -212,7 +222,7 @@ async function main() {
 
 
         for (let summary of cohortActivitySummaries) {
-            let username = summary.mentee.login;
+            let username = summary.mentee.login.toLowerCase();
             const row = menteeSummaryRows[username];
 
             if (!row) {
@@ -255,8 +265,15 @@ async function main() {
                 }
             }
 
-            // TODO
-            row.status = row.commits.length > 0 || row.pullRequests.length > 0;
+            // there can be contributions duplicated in 2 weeks, so we need to merge them
+            // see the bug report at https://github.com/orgs/community/discussions/121029
+            row.pullRequests = dedupe(row.pullRequests, (pr) => `${pr.repository}#${pr.number}`);
+            row.issues = dedupe(row.issues, (issue) => `${issue.repository}#${issue.number}`);
+            // no need to dedupe row.commits
+            row.pullRequestReviews = dedupe(row.pullRequestReviews, (pr) => `${pr.repository}#${pr.number}`);
+
+            // TODO: to be defined with Nate
+            row.status = Object.keys(row.commits).length > 0 || row.pullRequests.length > 0;
         }
         return menteeSummaryRows;
     }
@@ -276,7 +293,19 @@ async function main() {
             removeNonProjectOrgActivities(program, cohortActivitySummaries);
         }
 
-        const menteeSummaryRows = buildMenteeSummaryRows(program, cohortActivitySummaries);
+        let menteeSummaryRows = buildMenteeSummaryRows(program, cohortActivitySummaries);
+
+        if(jQuery("#sortByStatusInput").is(":checked")) {
+            menteeSummaryRows = Object.fromEntries(Object.entries(menteeSummaryRows).sort((a, b) => {
+                if(a[1].status && !b[1].status) {
+                    return 1;
+                } else if(!a[1].status && b[1].status) {
+                    return -1;
+                } else {
+                    return a[0].localeCompare(b[0]);
+                }
+            }));
+        }
 
         const startDate = selectedWeeks[0];
         const endDate = format(endOfWeek(parse(selectedWeeks[selectedWeeks.length - 1], "yyyy-MM-dd", new Date()), {weekStartsOn:1}), "yyyy-MM-dd");
@@ -293,7 +322,8 @@ async function main() {
                 if(!summary.mentee){
                     return false;
                 }
-                return summary.mentee.contributionsCollection.startedAt <= week && week <= summary.mentee.contributionsCollection.endedAt;
+
+                return summary.weekOf == week;
             });
         });
     }
@@ -346,9 +376,14 @@ async function main() {
     function updateMenteeSummariesTable(menteeSummaryRows:{ [mentee:string]:MenteeSummaryRow }, startDate:string, endDate:string) {
         let body = jQuery("#menteeSummaries").find("tbody");
         body.html("");
+        let index = 0;
         for(let mentee in menteeSummaryRows) {
+            index++;
+
             const row = menteeSummaryRows[mentee];
             let html = "";
+
+            html += `<td>${index}</td>`;
 
             html += `<td>
                 <div style="display: inline-block; padding-right: 1rem;">
@@ -372,30 +407,30 @@ async function main() {
             }
 
             html += `<td>
-                <a href="" target="_blank">${row.pullRequests.length} <i class="bi bi-github"></i></a>
+                <a href="https://github.com/search?q=author:${mentee} type:pr created:${startDate}..${endDate}&type=pullrequests" target="_blank">${row.pullRequests.length} <i class="bi bi-github"></i></a>
                 <div class="mt-2">
                     ${row.pullRequests.map((pr:{repository:string, number:number}) => `<a href="https://github.com/${pr.repository}/pull/${pr.number}" target="_blank">${pr.repository}#${pr.number}</a>`).join(", ")}
-                </div>
-            </td>`;
-
-            html += `<td>
-                <a href="" target="_blank">${row.issues.length} <i class="bi bi-github"></i></a>
-                <div class="mt-2">
-                    ${row.issues.map((issue:{repository:string, number:number}) => `<a href="https://github.com/${issue.repository}/issues/${issue.number}" target="_blank">${issue.repository}#${issue.number}</a>`).join(", ")}
                 </div>
             </td>`;
 
             const commitCount = Object.keys(row.commits).reduce((acc:number, repo:string) => acc + row.commits[repo], 0);
 
             html += `<td>
-                <a href="" target="_blank">${commitCount} <i class="bi bi-github"></i></a>
+                <a href="https://github.com/search?q=committer:${mentee} type:commit committer-date:${startDate}..${endDate} &type=commits" target="_blank">${commitCount} <i class="bi bi-github"></i></a>
                 <div class="mt-2">
                     ${Object.keys(row.commits).map((repo:string) => `<a href="https://github.com/${repo}/commits?author=${mentee}&since=${startDate}&until=${endDate}" target="_blank">${repo} (${row.commits[repo]})</a>`).join(", ")}
                 </div>
             </td>`;
 
             html += `<td>
-                <a href="" target="_blank">${row.pullRequestReviews.length} <i class="bi bi-github"></i></a>
+                <a href="https://github.com/search?q=author:${mentee} type:issue created:${startDate}..${endDate}&type=issues" target="_blank">${row.issues.length} <i class="bi bi-github"></i></a>
+                <div class="mt-2">
+                    ${row.issues.map((issue:{repository:string, number:number}) => `<a href="https://github.com/${issue.repository}/issues/${issue.number}" target="_blank">${issue.repository}#${issue.number}</a>`).join(", ")}
+                </div>
+            </td>`;
+
+            html += `<td>
+                <span>${row.pullRequestReviews.length} <i class="bi bi-github"></i></span>
                 <div class="mt-2">
                     ${row.pullRequestReviews.map((pr:{repository:string, number:number, url:string}) => `<a href="${pr.url}" target="_blank">${pr.repository}#${pr.number}</a>`).join(", ")}
                 </div>
@@ -408,6 +443,21 @@ async function main() {
 
             body.append(html);
         }
+    }
+
+    function dedupe<T>(contribs:T[], keyFn:(contrib:T) => string):T[] {
+        // dedupe the contributions
+        // use a map to keep track of the keys
+        const keys:{[key:string]:boolean} = {};
+        const deduped:T[] = [];
+        for(let contrib of contribs) {
+            const key = keyFn(contrib);
+            if(!keys[key]) {
+                keys[key] = true;
+                deduped.push(contrib);
+            }
+        }
+        return deduped;
     }
 }
 

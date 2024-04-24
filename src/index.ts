@@ -7,6 +7,11 @@ type Mentee = {
     username: string;
     mentors: string[];
     organizations: string[];
+    project: {
+        title: string;
+        ideaUrl: string;
+        platformUrl: string;
+    }
 };
 
 type Program = {
@@ -101,6 +106,13 @@ type MenteeSummaryRow = {
         username: string;
         name: string;
     };
+    mentors: string[];
+    organizations: string[];
+    project: {
+        title: string;
+        ideaUrl: string;
+        platformUrl: string;
+    }
     status: boolean;
     pullRequests:{
         repository:string;
@@ -212,6 +224,9 @@ async function main() {
                     username: username,
                     name: "",
                 },
+                mentors: mentee.mentors,
+                organizations: mentee.organizations,
+                project: mentee.project,
                 status: false,
                 pullRequests: [],
                 issues: [],
@@ -386,15 +401,33 @@ async function main() {
             html += `<td>${index}</td>`;
 
             html += `<td>
-                <div style="display: inline-block; padding-right: 1rem;">
+                <div>
                     <div class="row">
-                        <div class="col-4">
+                        <div class="col-2">
                             <img src="https://github.com/${row.mentee.username}.png?size=40" class="rounded-circle" style="width: 40px;">
                         </div>
-                        <div class="col-8">
+                        <div class="col-10">
                             <a href="https://github.com/${row.mentee.username}" target="_blank">@${row.mentee.username}</a>
-                            <br>
-                            <a href="https://github.com/${row.mentee.username}" target="_blank">${row.mentee.name}</a>
+                            
+                            <p class="small mt-2">
+                                <a href="https://github.com/${row.mentee.username}" target="_blank">${row.mentee.name}</a>
+                            </p>
+                            
+                            <p class="small m-0">
+                                <i><a href="${row.project.ideaUrl}" target="_blank">${row.project.title}</a></i>
+                            </p>
+                            
+                            <p class="small m-0">
+                            Mentors: ${row.mentors.map((mentor:string) => `<a href="https://github.com/${mentor}" target="_blank">@${mentor}</a>`).join(", ")} 
+                            </p>
+                            
+                            <p class="small m-0">
+                            GH orgs: ${row.organizations.map((org:string) => `<a href="https://github.com/${org}" target="_blank">${org}</a>`).join(", ")} 
+                            </p>
+                            
+                            <p class="small m-0">
+                                <a href="${row.project.platformUrl}" target="_blank">Go to platform</a>
+                            </p>
                         </div>
                     </div>
                 </div>

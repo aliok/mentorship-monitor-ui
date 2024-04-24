@@ -12,7 +12,7 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js"></script>
 
-<div class="container-fluid">
+<div class="container-fluid px-5">
     <div class="row row-cols-lg-auto g-3 align-items-center">
         <div class="col-12">
             <div class="form-floating">
@@ -69,14 +69,14 @@
 
 </div>
 
-<div class="container-fluid mt-5">
+<div class="container-fluid mt-5 px-5">
     <div class="row">
         <div class="col-12">
             <table id="menteeSummaries" class="table table-bordered table-hover">
                 <thead>
                 <tr>
                     <th scope="col">#</th>
-                    <th scope="col">Mentee</th>
+                    <th scope="col" width="700px" style="asdmin-width: 600px;">Mentee</th>
                     <th scope="col">Status  <span data-bs-toggle="tooltip" data-bs-title="'No' means that there are no PRs created or commits committed by the mentee in the selected weeks.">ℹ️</span></th>
                     <th scope="col">PRs created <span data-bs-toggle="tooltip" data-bs-title="Numbers might be slightly different than actuals for 2 reasons. <br/> 1. Activity is done after data is fetched. <br/> 2. <a href='https://github.com/orgs/community/discussions/121029' target='_blank'>GitHub bug<a/>.">ℹ️</span></th>
                     <th scope="col">Commits <span data-bs-toggle="tooltip" data-bs-title="Numbers might be slightly different than actuals for 2 reasons. <br/> 1. Activity is done after data is fetched. <br/> 2. <a href='https://github.com/orgs/community/discussions/121029' target='_blank'>GitHub bug<a/>.">ℹ️</span></th>

@@ -404,7 +404,7 @@ async function main() {
                 <div>
                     <div class="row">
                         <div class="col-2">
-                            <img src="https://github.com/${row.mentee.username}.png?size=40" class="rounded-circle" style="width: 40px;">
+                            <img src="https://github.com/${row.mentee.username}.png?size=70" class="rounded-circle" style="width: 70px;">
                         </div>
                         <div class="col-10">
                             <a href="https://github.com/${row.mentee.username}" target="_blank">@${row.mentee.username}</a>

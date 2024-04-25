@@ -347,7 +347,7 @@ async function main() {
         // create a map of mentee to organizations
         const menteeToOrgs:{[mentee:string]:string[]} = {};
         for(let mentee of program.cohort) {
-            menteeToOrgs[mentee.username.toLowerCase()] = mentee.organizations;
+            menteeToOrgs[mentee.username.toLowerCase()] = mentee.organizations.map((org:string) => org.toLowerCase());
         }
 
         for(let summary of cohortActivitySummaries) {
@@ -356,7 +356,7 @@ async function main() {
 
             let filteredCommits:CommitContribByRepo[] = [];
             for(let contrib of summary.mentee.contributionsCollection.commitContributionsByRepository) {
-                if(menteeOrgArr.indexOf(contrib.repository.owner.login) !== -1) {
+                if(menteeOrgArr.indexOf(contrib.repository.owner.login.toLowerCase()) !== -1) {
                     filteredCommits.push(contrib);
                 }
             }
@@ -364,7 +364,7 @@ async function main() {
 
             let filteredIssues:IssueContribByRepo[] = [];
             for(let contrib of summary.mentee.contributionsCollection.issueContributionsByRepository) {
-                if(menteeOrgArr.indexOf(contrib.repository.owner.login) !== -1) {
+                if(menteeOrgArr.indexOf(contrib.repository.owner.login.toLowerCase()) !== -1) {
                     filteredIssues.push(contrib);
                 }
             }
@@ -372,7 +372,7 @@ async function main() {
 
             let filteredPullRequests:PullRequestContribByRepo[] = [];
             for(let contrib of summary.mentee.contributionsCollection.pullRequestContributionsByRepository) {
-                if(menteeOrgArr.indexOf(contrib.repository.owner.login) !== -1) {
+                if(menteeOrgArr.indexOf(contrib.repository.owner.login.toLowerCase()) !== -1) {
                     filteredPullRequests.push(contrib);
                 }
             }
@@ -380,7 +380,7 @@ async function main() {
 
             let filteredPullRequestReviews:PullRequestReviewContribByRepo[] = [];
             for(let contrib of summary.mentee.contributionsCollection.pullRequestReviewContributionsByRepository) {
-                if(menteeOrgArr.indexOf(contrib.repository.owner.login) !== -1) {
+                if(menteeOrgArr.indexOf(contrib.repository.owner.login.toLowerCase()) !== -1) {
                     filteredPullRequestReviews.push(contrib);
                 }
             }

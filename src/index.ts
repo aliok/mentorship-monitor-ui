@@ -310,6 +310,11 @@ async function main() {
 
         let menteeSummaryRows = buildMenteeSummaryRows(program, cohortActivitySummaries);
 
+        // sort by username
+        menteeSummaryRows = Object.fromEntries(Object.entries(menteeSummaryRows).sort((a, b) => {
+            return a[1].mentee.username.localeCompare(b[1].mentee.username);
+        }));
+
         if(jQuery("#sortByStatusInput").is(":checked")) {
             menteeSummaryRows = Object.fromEntries(Object.entries(menteeSummaryRows).sort((a, b) => {
                 if(a[1].status && !b[1].status) {
@@ -317,7 +322,7 @@ async function main() {
                 } else if(!a[1].status && b[1].status) {
                     return -1;
                 } else {
-                    return a[0].localeCompare(b[0]);
+                    return a[1].mentee.username.localeCompare(b[1].mentee.username);
                 }
             }));
         }

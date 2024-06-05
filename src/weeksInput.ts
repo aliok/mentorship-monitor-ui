@@ -55,7 +55,7 @@ export class WeeksInput {
 
     private renderPicker() {
         if(!this.currentSelectionStart || !this.currentSelectionEnd){
-            this.selectLastWeek();
+            this.selectWholePeriod();
         }
         this.updatePicker();
         this.applySelection();

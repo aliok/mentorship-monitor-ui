@@ -172,7 +172,7 @@ function renderProgramInput(programs:{ [name:string]:Program }, selectedProgram:
         } else {
             text = "🔴 " + text;
         }
-        return `<option value="${programName}" ${programName === selectedProgram ? "selected" : ""}>${text}</option>`;
+        return `<option value="${programName}" ${selected ? "selected" : ""}>${text}</option>`;
     }).join(""));
 }
 
@@ -214,10 +214,59 @@ async function main() {
         selectProgram(selectedProgram);
     });
 
-    function buildMenteeSummaryRows(program:Program, cohortActivitySummaries:MenteeActivitySummary[]) {
+    jQuery("#showButton").on("click", async () => {
+        const selectedProgram = jQuery("#programInput").val() as string;
+        const selectedWeeks = weeksInput.getSelectedWeeks();
+        const selectedMentee = jQuery("#menteeInput").val() as string;
+
+        const program = programs[selectedProgram];
+        console.log("Selected program: ", selectedProgram);
+        console.log("Selected weeks: ", selectedWeeks);
+        console.log("Selected mentee: ", selectedMentee);
+
+        let cohortActivitySummaries = await fetchCohortActivitySummaries(program);
+        cohortActivitySummaries = filterBySelectedWeeks(cohortActivitySummaries, selectedWeeks);
+        cohortActivitySummaries = filterBySelectedMentee(cohortActivitySummaries, selectedMentee);
+
+        // if projectOrgActivitiesOnlyInput is checked, filter out the ones that are not in the project orgs
+        if (jQuery("#projectOrgActivitiesOnlyInput").is(":checked")) {
+            removeNonProjectOrgActivities(program, cohortActivitySummaries);
+        }
+
+        let menteeSummaryRows = buildMenteeSummaryRows(program, selectedMentee, cohortActivitySummaries);
+
+        // sort by username
+        menteeSummaryRows = Object.fromEntries(Object.entries(menteeSummaryRows).sort((a, b) => {
+            return a[1].mentee.username.localeCompare(b[1].mentee.username);
+        }));
+
+        if(jQuery("#sortByStatusInput").is(":checked")) {
+            menteeSummaryRows = Object.fromEntries(Object.entries(menteeSummaryRows).sort((a, b) => {
+                if(a[1].status && !b[1].status) {
+                    return 1;
+                } else if(!a[1].status && b[1].status) {
+                    return -1;
+                } else {
+                    return a[1].mentee.username.localeCompare(b[1].mentee.username);
+                }
+            }));
+        }
+
+        const startDate = selectedWeeks[0];
+        const endDate = format(endOfWeek(parse(selectedWeeks[selectedWeeks.length - 1], "yyyy-MM-dd", new Date()), {weekStartsOn:1}), "yyyy-MM-dd");
+        updateMenteeSummariesTable(menteeSummaryRows, startDate, endDate);
+    });
+
+    function buildMenteeSummaryRows(program:Program, selectedMentee:string, cohortActivitySummaries:MenteeActivitySummary[]) {
         // TODO: any sorting of rows?
         const menteeSummaryRows:{ [mentee:string]:MenteeSummaryRow } = {};
-        for (let mentee of program.cohort) {
+
+        let cohort = program.cohort;
+        if(selectedMentee) {
+            cohort = cohort.filter((mentee:Mentee) => mentee.username.toLowerCase() === selectedMentee.toLowerCase());
+        }
+
+        for (let mentee of cohort) {
             let username = mentee.username.toLowerCase();
             menteeSummaryRows[username] = {
                 mentee: {
@@ -293,47 +342,21 @@ async function main() {
         return menteeSummaryRows;
     }
 
-    jQuery("#showButton").on("click", async () => {
-        const selectedProgram = jQuery("#programInput").val() as string;
-        const selectedWeeks = weeksInput.getSelectedWeeks();
-        const program = programs[selectedProgram];
-        console.log("Selected program: ", selectedProgram);
-        console.log("Selected weeks: ", selectedWeeks);
-
-        let cohortActivitySummaries = await fetchCohortActivitySummaries(program);
-        cohortActivitySummaries = filterBySelectedWeeks(cohortActivitySummaries, selectedWeeks);
-
-        // if projectOrgActivitiesOnlyInput is checked, filter out the ones that are not in the project orgs
-        if (jQuery("#projectOrgActivitiesOnlyInput").is(":checked")) {
-            removeNonProjectOrgActivities(program, cohortActivitySummaries);
-        }
-
-        let menteeSummaryRows = buildMenteeSummaryRows(program, cohortActivitySummaries);
-
-        // sort by username
-        menteeSummaryRows = Object.fromEntries(Object.entries(menteeSummaryRows).sort((a, b) => {
-            return a[1].mentee.username.localeCompare(b[1].mentee.username);
-        }));
-
-        if(jQuery("#sortByStatusInput").is(":checked")) {
-            menteeSummaryRows = Object.fromEntries(Object.entries(menteeSummaryRows).sort((a, b) => {
-                if(a[1].status && !b[1].status) {
-                    return 1;
-                } else if(!a[1].status && b[1].status) {
-                    return -1;
-                } else {
-                    return a[1].mentee.username.localeCompare(b[1].mentee.username);
-                }
-            }));
-        }
-
-        const startDate = selectedWeeks[0];
-        const endDate = format(endOfWeek(parse(selectedWeeks[selectedWeeks.length - 1], "yyyy-MM-dd", new Date()), {weekStartsOn:1}), "yyyy-MM-dd");
-        updateMenteeSummariesTable(menteeSummaryRows, startDate, endDate);
-    });
-
     function selectProgram(programName:string) {
         weeksInput.setWeeks(programs[programName].weeks);
+        renderMenteeInput(programs[programName].cohort);
+    }
+
+    function renderMenteeInput(mentees:Mentee[]) {
+        let menteeUsernames = mentees.map((mentee:Mentee) => mentee.username);
+        // do a case-insensitive sort
+        menteeUsernames = menteeUsernames.sort((a:string, b:string) => a.localeCompare(b, undefined, {sensitivity: "base"}));
+
+        let menteeOptions = menteeUsernames.map((username:string) => {
+            return `<option value="${username}">${username}</option>`;
+        }).join("");
+        menteeOptions = `<option value="">-All-</option>` + menteeOptions;
+        jQuery("#menteeInput").html(menteeOptions);
     }
 
     function filterBySelectedWeeks(cohortActivitySummaries:MenteeActivitySummary[], selectedWeeks:string[]) {
@@ -345,6 +368,16 @@ async function main() {
 
                 return summary.weekOf == week;
             });
+        });
+    }
+
+    function filterBySelectedMentee(cohortActivitySummaries:MenteeActivitySummary[], username:string) {
+        if(!username) {
+            return cohortActivitySummaries;
+        }
+
+        return cohortActivitySummaries.filter((summary:MenteeActivitySummary) => {
+            return summary.mentee.login.toLowerCase() === username.toLowerCase();
         });
     }
 

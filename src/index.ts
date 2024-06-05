@@ -161,19 +161,38 @@ function isProgramActive(program:Program) {
 }
 
 function renderProgramInput(programs:{ [name:string]:Program }, selectedProgram:string) {
-    jQuery("#programInput").html(Object.keys(programs).map((programName:string) => {
-        const selected = programName === selectedProgram;
-        const inProgress = isProgramActive(programs[programName]);
-        const dateRange = `${programs[programName].startDate} - ${programs[programName].endDate}`;
+    // program inputs sorted by:
+    // - in progress programs first, then the finished ones
+    // - within each group, sorted by start date (earliest first)
 
-        let text = `${programName} (${dateRange})`;
-        if(inProgress) {
-            text = "🟢 " + text;
-        } else {
-            text = "🔴 " + text;
-        }
-        return `<option value="${programName}" ${selected ? "selected" : ""}>${text}</option>`;
-    }).join(""));
+    const inProgressPrograms = Object.keys(programs).filter((programName:string) => isProgramActive(programs[programName]));
+    const finishedPrograms = Object.keys(programs).filter((programName:string) => !isProgramActive(programs[programName]));
+
+    inProgressPrograms.sort((a:string, b:string) => new Date(programs[a].startDate).getTime() - new Date(programs[b].startDate).getTime());
+    finishedPrograms.sort((a:string, b:string) => new Date(programs[a].startDate).getTime() - new Date(programs[b].startDate).getTime());
+
+    const selectOption = function(programKeys:string[]){
+        return programKeys.map((programName:string) => {
+            const selected = programName === selectedProgram;
+            const inProgress = isProgramActive(programs[programName]);
+            const dateRange = `${programs[programName].startDate} - ${programs[programName].endDate}`;
+
+            let text = `${programName} (${dateRange})`;
+            if(inProgress) {
+                text = "🟢 " + text;
+            } else {
+                text = "🔴 " + text;
+            }
+            return `<option value="${programName}" ${selected ? "selected" : ""}>${text}</option>`;
+        });
+    };
+
+    const options = [];
+
+    options.push(selectOption(inProgressPrograms));
+    options.push(selectOption(finishedPrograms));
+
+    jQuery("#programInput").html(options.join(""));
 }
 
 async function main() {

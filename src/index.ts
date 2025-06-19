@@ -411,6 +411,13 @@ async function main() {
             let menteeUsername = summary.mentee.login.toLowerCase()
             const menteeOrgArr = menteeToOrgs[menteeUsername];
 
+            if(!menteeOrgArr)  {
+                console.warn("No organizations found for mentee: ", menteeUsername);
+                continue;
+            }
+
+            console.log("Filtering activities for mentee: ", menteeUsername, " orgs: ", menteeOrgArr);
+
             let filteredCommits:CommitContribByRepo[] = [];
             for(let contrib of summary.mentee.contributionsCollection.commitContributionsByRepository) {
                 if(menteeOrgArr.indexOf(contrib.repository.owner.login.toLowerCase()) !== -1) {

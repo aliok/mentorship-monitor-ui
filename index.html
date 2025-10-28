@@ -82,6 +82,34 @@
 <div class="container-fluid mt-5 px-5">
     <div class="row">
         <div class="col-12">
+            <div id="followUpStats" class="card mb-4" style="display:none;">
+                <div class="card-body">
+                    <h5 class="card-title">LFX Follow-up: Post-term contributions</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                            <tr>
+                                <td>Mentees contributing in the year post-term</td>
+                                <td id="stat_year_any_count">-</td>
+                            </tr>
+                            <tr>
+                                <td>Mentees with 2+ contributions in the year post-term</td>
+                                <td id="stat_year_2plus_count">-</td>
+                            </tr>
+                            <tr>
+                                <td>Mentees contributing 2–12 months post-term</td>
+                                <td id="stat_2to12_any_count">-</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="form-text">
+                        Contribution = any of commits, issues, PRs, reviews in the selected window.
+                        Only contributions to the mentee's project GitHub organization(s) (e.g., CNCF orgs) are counted.
+                        2–12 months window: <span id="stat_2to12_range">-</span>.
+                    </div>
+                </div>
+            </div>
             <table id="menteeSummaries" class="table table-bordered table-hover">
                 <thead>
                 <tr>

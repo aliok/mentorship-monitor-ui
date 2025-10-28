@@ -1,5 +1,5 @@
 import "./style.scss";
-import {endOfWeek, format, parse} from "date-fns";
+import {endOfWeek, format, parse, addMonths, isAfter, isBefore} from "date-fns";
 import {WeeksInput} from "./weeksInput"
 import bootstrap from "bootstrap";
 
@@ -132,16 +132,22 @@ type MenteeSummaryRow = {
 
 async function fetchPrograms():Promise<string[]> {
     const res = await fetch("https://raw.githubusercontent.com/aliok/mentorship-monitor/main/000-build-programs/programs-list.json");
+    // For local dev via webpack dev server + public symlinks:
+    // const res = await fetch(`/000-build-programs/programs-list.json`);
     return await res.json();
 }
 
 async function fetchProgram(name:string):Promise<Program> {
     const res = await fetch(`https://raw.githubusercontent.com/aliok/mentorship-monitor/main/000-build-programs/${name}.json`);
+    // For local dev via webpack dev server + public symlinks:
+    // const res = await fetch(`/000-build-programs/${name}.json`);
     return await res.json();
 }
 
 async function fetchCohortActivitySummaries(program:Program):Promise<MenteeActivitySummary[]> {
     const res = await fetch(`https://raw.githubusercontent.com/aliok/mentorship-monitor/main/150-build-cohort-activity-summaries/${program.term}.json`)
+    // For local dev via webpack dev server + public symlinks:
+    // const res = await fetch(`/150-build-cohort-activity-summaries/${program.term}.json`)
     return await res.json();
 }
 
@@ -242,8 +248,26 @@ async function main() {
         console.log("Selected program: ", selectedProgram);
         console.log("Selected weeks: ", selectedWeeks);
         console.log("Selected mentee: ", selectedMentee);
+        // Always fetch all follow-up data once
+        let allSummaries = await fetchCohortActivitySummaries(program);
 
-        let cohortActivitySummaries = await fetchCohortActivitySummaries(program);
+        // If selected program is an LFX follow-up term, compute and display stats
+        if (isLfxFollowUp(program)) {
+            const counts = computeFollowUpStats(program, allSummaries);
+            jQuery('#stat_year_any_count').text(counts.yearAnyCount);
+            jQuery('#stat_year_2plus_count').text(counts.yearTwoPlusCount);
+            jQuery('#stat_2to12_any_count').text(counts.months2to12AnyCount);
+            // Set the 2–12 month window text
+            const startFollowUp = parse(program.startDate, 'yyyy-MM-dd', new Date());
+            const endFollowUp = parse(program.endDate, 'yyyy-MM-dd', new Date());
+            const startMonth2 = addMonths(startFollowUp, 1);
+            jQuery('#stat_2to12_range').text(`${format(startMonth2, 'yyyy-MM-dd')} → ${format(endFollowUp, 'yyyy-MM-dd')}`);
+            jQuery('#followUpStats').show();
+        } else {
+            jQuery('#followUpStats').hide();
+        }
+
+        let cohortActivitySummaries = [...allSummaries];
         cohortActivitySummaries = filterBySelectedWeeks(cohortActivitySummaries, selectedWeeks);
         cohortActivitySummaries = filterBySelectedMentee(cohortActivitySummaries, selectedMentee);
 
@@ -275,6 +299,85 @@ async function main() {
         const endDate = format(endOfWeek(parse(selectedWeeks[selectedWeeks.length - 1], "yyyy-MM-dd", new Date()), {weekStartsOn:1}), "yyyy-MM-dd");
         updateMenteeSummariesTable(menteeSummaryRows, startDate, endDate);
     });
+
+    function isLfxFollowUp(program: Program): boolean {
+        return program.term.startsWith('lfx-') && program.term.endsWith('-follow-up');
+    }
+
+    function computeFollowUpStats(program: Program, summaries: MenteeActivitySummary[]) {
+        // Group weekly summaries by mentee login
+        const byMentee: {[username:string]: MenteeActivitySummary[]} = {};
+        for (const s of summaries) {
+            const u = (s.mentee?.login || '').toLowerCase();
+            if (!u) continue;
+            (byMentee[u] ||= []).push(s);
+        }
+
+        // Map mentee -> allowed orgs (lowercased)
+        const menteeOrgsMap = new Map<string, Set<string>>();
+        for (const m of program.cohort) {
+            menteeOrgsMap.set(
+                m.username.toLowerCase(),
+                new Set((m.organizations || []).map(o => o.toLowerCase()))
+            );
+        }
+
+        // Contribution sum helper across all categories, but only in mentee's project orgs
+        const sumProjectOrgContribs = (arr:MenteeActivitySummary[], orgs:Set<string>) => arr.reduce((acc, s) => {
+            const cc = s.mentee.contributionsCollection;
+            let total = 0;
+            // commits
+            for (const r of (cc.commitContributionsByRepository || [])) {
+                const owner = r.repository?.owner?.login?.toLowerCase();
+                if (owner && orgs.has(owner)) total += (r.contributions?.totalCount || 0);
+            }
+            // issues
+            for (const r of (cc.issueContributionsByRepository || [])) {
+                const owner = r.repository?.owner?.login?.toLowerCase();
+                if (owner && orgs.has(owner)) total += (r.contributions?.nodes?.length || 0);
+            }
+            // pull requests
+            for (const r of (cc.pullRequestContributionsByRepository || [])) {
+                const owner = r.repository?.owner?.login?.toLowerCase();
+                if (owner && orgs.has(owner)) total += (r.contributions?.nodes?.length || 0);
+            }
+            // reviews
+            for (const r of (cc.pullRequestReviewContributionsByRepository || [])) {
+                const owner = r.repository?.owner?.login?.toLowerCase();
+                if (owner && orgs.has(owner)) total += (r.contributions?.nodes?.length || 0);
+            }
+            return acc + total;
+        }, 0);
+
+        const cohortUsernames = program.cohort.map(m => m.username.toLowerCase());
+
+        const startFollowUp = parse(program.startDate, 'yyyy-MM-dd', new Date());
+        const endFollowUp = parse(program.endDate, 'yyyy-MM-dd', new Date());
+        const startMonth2 = addMonths(startFollowUp, 1);
+
+        const in2to12 = (s:MenteeActivitySummary) => {
+            const w = parse(s.weekOf, 'yyyy-MM-dd', new Date());
+            return (isAfter(w, startMonth2) || w.getTime() === startMonth2.getTime()) && (isBefore(w, endFollowUp) || w.getTime() === endFollowUp.getTime());
+        };
+
+        let yearAnyCount = 0;
+        let yearTwoPlusCount = 0;
+        let months2to12AnyCount = 0;
+
+        for (const uname of cohortUsernames) {
+            const weeks = byMentee[uname] || [];
+            const orgs = menteeOrgsMap.get(uname) || new Set<string>();
+            const totalYear = sumProjectOrgContribs(weeks, orgs);
+            if (totalYear > 0) yearAnyCount++;
+            if (totalYear >= 2) yearTwoPlusCount++;
+            const total2to12 = sumProjectOrgContribs(weeks.filter(in2to12), orgs);
+            if (total2to12 > 0) months2to12AnyCount++;
+        }
+
+        return {yearAnyCount, yearTwoPlusCount, months2to12AnyCount};
+    }
+
+    
 
     function buildMenteeSummaryRows(program:Program, selectedMentee:string, cohortActivitySummaries:MenteeActivitySummary[]) {
         // TODO: any sorting of rows?

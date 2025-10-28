@@ -132,22 +132,16 @@ type MenteeSummaryRow = {
 
 async function fetchPrograms():Promise<string[]> {
     const res = await fetch("https://raw.githubusercontent.com/aliok/mentorship-monitor/main/000-build-programs/programs-list.json");
-    // For local dev via webpack dev server + public symlinks:
-    // const res = await fetch(`/000-build-programs/programs-list.json`);
     return await res.json();
 }
 
 async function fetchProgram(name:string):Promise<Program> {
     const res = await fetch(`https://raw.githubusercontent.com/aliok/mentorship-monitor/main/000-build-programs/${name}.json`);
-    // For local dev via webpack dev server + public symlinks:
-    // const res = await fetch(`/000-build-programs/${name}.json`);
     return await res.json();
 }
 
 async function fetchCohortActivitySummaries(program:Program):Promise<MenteeActivitySummary[]> {
     const res = await fetch(`https://raw.githubusercontent.com/aliok/mentorship-monitor/main/150-build-cohort-activity-summaries/${program.term}.json`)
-    // For local dev via webpack dev server + public symlinks:
-    // const res = await fetch(`/150-build-cohort-activity-summaries/${program.term}.json`)
     return await res.json();
 }
 

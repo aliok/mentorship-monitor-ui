@@ -248,9 +248,15 @@ async function main() {
         // If selected program is an LFX follow-up term, compute and display stats
         if (isLfxFollowUp(program)) {
             const counts = computeFollowUpStats(program, allSummaries);
-            jQuery('#stat_year_any_count').text(counts.yearAnyCount);
-            jQuery('#stat_year_2plus_count').text(counts.yearTwoPlusCount);
-            jQuery('#stat_2to12_any_count').text(counts.months2to12AnyCount);
+            const totalMentees = program.cohort.length;
+            
+            const yearAnyPercent = totalMentees > 0 ? Math.round((counts.yearAnyCount / totalMentees) * 100) : 0;
+            const yearTwoPlusPercent = totalMentees > 0 ? Math.round((counts.yearTwoPlusCount / totalMentees) * 100) : 0;
+            const months2to12AnyPercent = totalMentees > 0 ? Math.round((counts.months2to12AnyCount / totalMentees) * 100) : 0;
+            
+            jQuery('#stat_year_any_count').text(`${counts.yearAnyCount} (${yearAnyPercent}%)`);
+            jQuery('#stat_year_2plus_count').text(`${counts.yearTwoPlusCount} (${yearTwoPlusPercent}%)`);
+            jQuery('#stat_2to12_any_count').text(`${counts.months2to12AnyCount} (${months2to12AnyPercent}%)`);
             // Set the 2–12 month window text
             const startFollowUp = parse(program.startDate, 'yyyy-MM-dd', new Date());
             const endFollowUp = parse(program.endDate, 'yyyy-MM-dd', new Date());
